@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Calculadora de Aquisição Beta</title>
+<meta name="author" content="Julia Atroch">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<meta name="description" content="Calculadora de investimento em novos clientes pela meta de crescimento. Criada por Julia Atroch.">
+<meta property="og:title" content="Calculadora de Aquisição · Julia Atroch">
+<meta property="og:description" content="Quantos clientes novos a meta exige, quanto cada um pode custar e por quanto tempo precisa comprar para dar retorno.">
+<style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style>
+</head>
+<body>
+<style>
+/* Layout: dados da empresa (esquerda) → resposta-síntese → três perguntas em sequência, cada uma com memória de cálculo recolhida */
+:root {
+  --bg: #f3f5f6; --panel: #ffffff; --fg: #16232b; --muted: #5b6b74; --line: #d9e0e3;
+  --accent: #0e5a6b; --accent-soft: #e2eff2; --seg1: #8fb3bd; --seg2: #c98a2b;
+  --ok: #1f7a4d; --ok-bg: #e3f3ea; --bad: #b3261e; --bad-bg: #fbe5e3;
+  --f-display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --f-body: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f171c; --panel: #16222a; --fg: #e4ecef; --muted: #93a5ae; --line: #2a3a44;
+    --accent: #5fbcd0; --accent-soft: #173640; --seg1: #4f7a86; --seg2: #e0a54a;
+    --ok: #6fd39d; --ok-bg: #173628; --bad: #f28b82; --bad-bg: #3d1c1a; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f171c; --panel: #16222a; --fg: #e4ecef; --muted: #93a5ae; --line: #2a3a44;
+  --accent: #5fbcd0; --accent-soft: #173640; --seg1: #4f7a86; --seg2: #e0a54a;
+  --ok: #6fd39d; --ok-bg: #173628; --bad: #f28b82; --bad-bg: #3d1c1a; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font-family: var(--f-body); font-size: 15px; line-height: 1.5; }
+.wrap { max-width: 1120px; margin: 0 auto; padding-block: 28px 48px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 20px; }
+header { display: grid; gap: 6px; max-width: 72ch; }
+.eyebrow { font-family: var(--f-mono); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
+h1 { font-family: var(--f-display); font-weight: 800; font-size: clamp(26px, 4vw, 36px); line-height: 1.1; margin: 0; text-wrap: balance; }
+header p { margin: 0; color: var(--muted); }
+.layout { display: grid; grid-template-columns: minmax(260px, 340px) minmax(0, 1fr); gap: 20px; align-items: start; }
+@media (max-width: 860px) { .layout { grid-template-columns: minmax(0, 1fr); } }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 18px; min-width: 0; }
+.card h2 { font-family: var(--f-display); font-weight: 700; font-size: 17px; margin: 0 0 4px; text-wrap: balance; }
+.sub { margin: 0 0 14px; color: var(--muted); font-size: 13.5px; }
+.inputs { display: grid; gap: 12px; }
+.grp { font-family: var(--f-mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-top: 6px; padding-top: 10px; border-top: 1px solid var(--line); }
+.grp:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
+.field { display: grid; gap: 4px; }
+.field > span { font-size: 13px; color: var(--muted); }
+.num { display: flex; align-items: center; border: 1px solid var(--line); border-radius: 7px; background: var(--bg); }
+.num span { font-family: var(--f-mono); font-size: 12px; color: var(--muted); padding: 0 8px; white-space: nowrap; }
+.num input { width: 100%; min-width: 0; border: 0; background: transparent; color: var(--fg); font-family: var(--f-mono); font-size: 15px; padding: 8px; text-align: right; font-variant-numeric: tabular-nums; }
+.calc-field { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; padding: 8px 10px; border-radius: 7px; background: var(--accent-soft); font-size: 13px; }
+.calc-field b { font-family: var(--f-mono); font-weight: 500; font-size: 14px; font-variant-numeric: tabular-nums; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chips button { font: 600 13px var(--f-body); padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel); color: var(--fg); cursor: pointer; }
+.chips button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--panel); }
+button:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.reset { justify-self: start; font: 500 13px var(--f-body); color: var(--accent); background: none; border: 0; padding: 4px 0; cursor: pointer; text-decoration: underline; }
+
+.answers { display: grid; gap: 16px; min-width: 0; }
+.hero { background: var(--accent); color: var(--panel); border-radius: 10px; padding: 18px 20px; display: grid; gap: 4px; }
+.hero .k { font-size: 13px; opacity: .85; }
+.hero .v { font-family: var(--f-display); font-weight: 800; font-size: clamp(30px, 5vw, 42px); line-height: 1.05; font-variant-numeric: tabular-nums; }
+.hero .s { font-size: 14px; opacity: .9; }
+.q { display: grid; gap: 12px; }
+.q-head { display: flex; gap: 12px; align-items: flex-start; }
+.q-n { flex: none; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); font: 700 14px var(--f-display); }
+.q-head h2 { margin: 2px 0 0; }
+.big { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 10px; }
+.big strong { font-family: var(--f-display); font-weight: 800; font-size: 32px; line-height: 1; font-variant-numeric: tabular-nums; color: var(--accent); }
+.big span { color: var(--muted); font-size: 14px; }
+.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.fact { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; display: grid; gap: 2px; }
+.fact .k { font-size: 12.5px; color: var(--muted); }
+.fact .v { font-family: var(--f-display); font-weight: 700; font-size: 19px; font-variant-numeric: tabular-nums; }
+.fact .s { font-size: 12px; color: var(--muted); }
+.bar { display: flex; height: 26px; border-radius: 6px; overflow: hidden; background: var(--line); }
+.bar div { display: grid; place-items: center; font: 500 12px var(--f-mono); color: var(--fg); min-width: 0; white-space: nowrap; overflow: hidden; }
+.bar .b0 { background: var(--accent-soft); }
+.bar .b1 { background: var(--seg1); }
+.bar .b2 { background: var(--seg2); color: #1b1305; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 12.5px; color: var(--muted); }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+.note { font-size: 13.5px; padding: 10px 12px; border-radius: 8px; }
+.note.ok { background: var(--ok-bg); color: var(--ok); }
+.note.bad { background: var(--bad-bg); color: var(--bad); }
+details.memo summary { cursor: pointer; font-size: 13.5px; font-weight: 600; color: var(--accent); list-style: none; display: inline-flex; gap: 8px; align-items: center; }
+details.memo summary::-webkit-details-marker { display: none; }
+details.memo summary::before { content: "+"; font-family: var(--f-mono); width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; background: var(--accent-soft); }
+details.memo[open] summary::before { content: "−"; }
+.steps { margin: 10px 0 0; padding: 12px 14px; list-style: none; background: var(--bg); border-radius: 8px; display: grid; gap: 8px; font-size: 13px; }
+.steps li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; align-items: baseline; }
+.steps li span { color: var(--muted); }
+.steps code { font-family: var(--f-mono); font-size: 12.5px; font-variant-numeric: tabular-nums; text-align: right; }
+@media (max-width: 520px) { .steps li { grid-template-columns: minmax(0, 1fr); } .steps code { text-align: left; } }
+footer { font-size: 12px; color: var(--muted); display: grid; gap: 6px; }
+footer .credit { margin: 0; font-weight: 600; color: var(--fg); }
+.byline { font-size: 13px; color: var(--muted); }
+.byline b { color: var(--fg); font-weight: 600; }
+</style>
+
+<div class="wrap">
+  <header>
+    <span class="eyebrow">Aquisição de novos clientes · Versão Beta</span>
+    <span class="byline">Criado por <b>Julia Atroch</b></span>
+    <h1>Calculadora de investimento em novos clientes pela meta de crescimento</h1>
+    <p>Preencha os dados da empresa e a meta de crescimento. A calculadora mostra quantos clientes novos a meta exige, quanto cada um pode custar e o que ele precisa comprar para dar retorno.</p>
+  </header>
+
+  <div class="layout">
+    <section class="card" aria-labelledby="t-in">
+      <h2 id="t-in">Dados da empresa</h2>
+      <p class="sub">Valores de exemplo de uma microempresa B2B. Troque pelos seus.</p>
+      <div class="inputs">
+        <div class="grp">Últimos 12 meses</div>
+        <label class="field" for="fat"><span>Faturamento anual</span><div class="num"><span>R$</span><input id="fat" type="number" min="0" step="1000"></div></label>
+        <label class="field" for="cli"><span>Clientes que compraram no ano</span><div class="num"><input id="cli" type="number" min="1" step="1"><span>clientes</span></div></label>
+        <label class="field" for="ticket"><span>Ticket médio por compra</span><div class="num"><span>R$</span><input id="ticket" type="number" min="1" step="10"></div></label>
+        <div class="calc-field"><span>Frequência de compra (calculada)</span><b id="freqOut">—</b></div>
+        <label class="field" for="marg"><span>Margem de contribuição</span><div class="num"><input id="marg" type="number" min="1" max="100" step="1"><span>%</span></div></label>
+        <label class="field" for="tempo"><span>Tempo médio de relacionamento</span><div class="num"><input id="tempo" type="number" min="2" step="1"><span>meses</span></div></label>
+
+        <div class="grp">Decisões da diretoria</div>
+        <div class="field"><span>Meta de crescimento do faturamento</span>
+          <div class="chips" id="chips" role="group" aria-label="Meta de crescimento">
+            <button type="button" data-v="5">5%</button><button type="button" data-v="10">10%</button><button type="button" data-v="15">15%</button><button type="button" data-v="30">30%</button>
+          </div>
+          <div class="num"><input id="meta" type="number" min="0" step="1" aria-label="Meta de crescimento em %"><span>%</span></div>
+        </div>
+        <label class="field" for="pb"><span>Prazo máximo para o cliente se pagar (payback)</span><div class="num"><input id="pb" type="number" min="1" step="1"><span>meses</span></div></label>
+        <label class="field" for="ratio"><span>Retorno mínimo sobre o custo do cliente (LTV:CAC)</span><div class="num"><input id="ratio" type="number" min="1" step="0.5"><span>vezes</span></div></label>
+        <button type="button" class="reset" id="reset">Voltar ao exemplo</button>
+      </div>
+    </section>
+
+    <div class="answers">
+      <section class="hero" aria-live="polite">
+        <span class="k">Investimento anual em novos clientes</span>
+        <span class="v" id="hBudget">—</span>
+      </section>
+
+      <section class="card q" aria-labelledby="t1">
+        <div class="q-head"><span class="q-n">1</span><div><h2 id="t1">Quantos clientes novos devo conquistar?</h2></div></div>
+        <div class="big"><strong id="novos">—</strong><span id="novosSub">—</span></div>
+        <div class="bar" id="bar" aria-hidden="true"></div>
+        <div class="legend"><span><i style="background:var(--accent-soft)"></i>Continuam comprando</span><span><i style="background:var(--seg1)"></i>Novos para repor quem sai</span><span><i style="background:var(--seg2)"></i>Novos para crescer</span></div>
+        <details class="memo"><summary>Ver memória de cálculo</summary><ol class="steps" id="m1"></ol></details>
+      </section>
+
+      <section class="card q" aria-labelledby="t2">
+        <div class="q-head"><span class="q-n">2</span><div><h2 id="t2">Quanto cada cliente deve comprar?</h2></div></div>
+        <div class="facts">
+          <div class="fact"><span class="k">Valor da compra</span><span class="v" id="fTicket">—</span><span class="s">ticket médio</span></div>
+          <div class="fact"><span class="k">Margem por cliente</span><span class="v" id="fMarg">—</span><span class="s" id="fMargS">—</span></div>
+          <div class="fact"><span class="k">CAC</span><span class="v" id="fCac">—</span><span class="s">custo máximo por cliente</span></div>
+          <div class="fact"><span class="k">Número de compras para se pagar</span><span class="v" id="fPaga">—</span><span class="s" id="fPagaS">—</span></div>
+        </div>
+        <details class="memo"><summary>Ver memória de cálculo</summary><ol class="steps" id="m2"></ol></details>
+      </section>
+
+      <section class="card q" aria-labelledby="t3">
+        <div class="q-head"><span class="q-n">3</span><div><h2 id="t3">Por quanto tempo o cliente deve comprar?</h2></div></div>
+        <div class="facts">
+          <div class="fact"><span class="k">Para empatar (no papel)</span><span class="v" id="pbS">—</span><span class="s">CAC ÷ margem mensal</span></div>
+          <div class="fact"><span class="k">Para empatar (na prática)</span><span class="v" id="pbA">—</span><span class="s">considerando quem sai antes</span></div>
+          <div class="fact"><span class="k">Para dar o retorno mínimo</span><span class="v" id="tNec">—</span><span class="s" id="tNecS">—</span></div>
+        </div>
+        <div class="note" id="tNote">—</div>
+        <details class="memo"><summary>Ver memória de cálculo</summary><ol class="steps" id="m3"></ol></details>
+      </section>
+    </div>
+  </div>
+  <footer><p class="credit">© 2026 Julia Atroch. Metodologia e ferramenta de autoria de Julia Atroch. Uso livre para consulta. Reprodução, adaptação ou uso comercial só com autorização da autora.</p>Dados ilustrativos. Premissas: os clientes saem aos poucos, na taxa dada pelo tempo médio de relacionamento; os clientes novos compram como a média da base; sem sazonalidade.</footer>
+</div>
+
+<script>
+(function () {
+  const $ = id => document.getElementById(id);
+  const EX = { fat: 84000, cli: 56, ticket: 250, marg: 30, tempo: 36, meta: 10, pb: 12, ratio: 3 };
+  const S = { ...EX };
+  const brl = v => isFinite(v) ? v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }) : '—';
+  const n0 = v => isFinite(v) ? Math.round(v).toLocaleString('pt-BR') : '—';
+  const n1 = v => isFinite(v) ? v.toLocaleString('pt-BR', { maximumFractionDigits: 1 }) : '—';
+  const pct = v => isFinite(v) ? (v * 100).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + '%' : '—';
+  const meses = v => isFinite(v) ? n0(v) + (Math.round(v) === 1 ? ' mês' : ' meses') : '—';
+  const step = (label, formula, val) => `<li><span>${label}</span><code>${formula} = <b>${val}</b></code></li>`;
+
+  const ids = Object.keys(EX);
+  ids.forEach(id => {
+    $(id).value = S[id];
+    $(id).addEventListener('input', () => { const v = parseFloat($(id).value); if (isFinite(v) && v >= 0) { S[id] = v; render(); } });
+  });
+  $('chips').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; S.meta = +b.dataset.v; $('meta').value = S.meta; render(); });
+  $('reset').addEventListener('click', () => { Object.assign(S, EX); ids.forEach(id => $(id).value = S[id]); render(); });
+
+  function render() {
+    const { fat, cli, ticket, marg, tempo, meta, pb, ratio } = S;
+    const m = marg / 100, g = meta / 100;
+    const freq = fat / cli / ticket;
+    const fatCli = fat / cli;
+    const fatMeta = fat * (1 + g);
+    const necess = Math.ceil(fatMeta / fatCli - 1e-9);
+    const c = 1 / tempo;
+    const churnA = 1 - Math.pow(1 - c, 12);
+    const ficam = Math.round(cli * (1 - churnA));
+    const saem = cli - ficam;
+    const novos = Math.max(0, necess - ficam);
+    const repor = Math.min(novos, saem), crescer = Math.max(0, novos - saem);
+
+    const margCompra = ticket * m;
+    const margMes = margCompra * freq / 12;
+    const ltv = margMes * tempo;
+    const lim1 = margMes * pb, lim2 = ltv / ratio;
+    const cac = Math.min(lim1, lim2);
+    const budget = novos * cac;
+
+    const comprasPaga = cac / margCompra;
+    const pbSimples = cac / margMes;
+    let pbAj = NaN;
+    if (cac < ltv) { for (let n = 1; n <= 600; n++) { if (ltv * (1 - Math.pow(1 - c, n)) >= cac - 1e-6) { pbAj = n; break; } } }
+    const tempoNec = cac * ratio / margMes;
+
+    $('freqOut').textContent = n1(freq) + ' compras/ano';
+    document.querySelectorAll('#chips button').forEach(b => b.setAttribute('aria-pressed', String(+b.dataset.v === meta)));
+
+    $('hBudget').textContent = brl(budget);
+
+    // 1
+    $('novos').textContent = n0(novos) + ' clientes';
+    $('novosSub').textContent = `${n0(repor)} para repor quem sai e ${n0(crescer)} para crescer ${n1(meta)}%`;
+    const tot = Math.max(necess, ficam + novos);
+    $('bar').innerHTML = `<div class="b0" style="width:${ficam / tot * 100}%">${n0(ficam)}</div><div class="b1" style="width:${repor / tot * 100}%">${repor ? n0(repor) : ''}</div><div class="b2" style="width:${crescer / tot * 100}%">${crescer ? n0(crescer) : ''}</div>`;
+    $('m1').innerHTML =
+      step('Faturamento por cliente', `${brl(fat)} ÷ ${n0(cli)}`, brl(fatCli)) +
+      step('Faturamento meta', `${brl(fat)} × ${n1(1 + g)}`, brl(fatMeta)) +
+      step('Clientes necessários no fim do ano', `${brl(fatMeta)} ÷ ${brl(fatCli)}`, n0(necess)) +
+      step('Churn anual', `1 − (1 − 1/${n0(tempo)})^12`, pct(churnA)) +
+      step('Clientes que continuam', `${n0(cli)} × (1 − ${pct(churnA)})`, n0(ficam)) +
+      step('Clientes novos', `${n0(necess)} − ${n0(ficam)}`, n0(novos));
+
+    // 2
+    $('fTicket').textContent = brl(ticket);
+    $('fMarg').textContent = brl(margMes);
+    $('fMargS').textContent = `por mês, em média (${brl(margCompra)} por compra)`;
+    $('fCac').textContent = brl(cac);
+    $('fPaga').textContent = n1(comprasPaga) + ' compras';
+    $('fPagaS').textContent = `no prazo de ${meses(pbSimples)} (a média da base é ${n1(freq)} por ano)`;
+    $('m2').innerHTML =
+      step('Frequência de compra', `${brl(fat)} ÷ ${n0(cli)} ÷ ${brl(ticket)}`, n1(freq)) +
+      step('Margem por compra', `${brl(ticket)} × ${n0(marg)}%`, brl(margCompra)) +
+      step('Margem por cliente/mês', `${brl(margCompra)} × ${n1(freq)} ÷ 12`, brl(margMes)) +
+      step('Limite pelo caixa', `${brl(margMes)} × ${n0(pb)} meses`, brl(lim1)) +
+      step('Limite pelo valor do cliente', `LTV ${brl(ltv)} ÷ ${n1(ratio)}`, brl(lim2)) +
+      step('CAC meta (o menor dos dois)', lim1 <= lim2 ? 'quem limita: o caixa' : 'quem limita: o valor do cliente', brl(cac)) +
+      step('Compras para pagar o CAC', `${brl(cac)} ÷ ${brl(margCompra)}`, n1(comprasPaga));
+
+    // 3
+    $('pbS').textContent = meses(pbSimples);
+    $('pbA').textContent = isFinite(pbAj) ? 'Mês ' + pbAj : 'Não empata';
+    $('tNec').textContent = meses(tempoNec);
+    $('tNecS').textContent = `para devolver ${n1(ratio)}× o que custou`;
+    const okT = tempo >= tempoNec - 0.5;
+    $('tNote').className = 'note ' + (okT ? 'ok' : 'bad');
+    $('tNote').textContent = okT
+      ? `O cliente compra, em média, por ${meses(tempo)}: cobre o mínimo de ${meses(tempoNec)} e devolve ${n1(ltv / cac)}× o que custou (LTV de ${brl(ltv)}).`
+      : `O cliente compra, em média, por ${meses(tempo)}, menos que os ${meses(tempoNec)} necessários. O retorno fica em ${n1(ltv / cac)}×.`;
+    $('m3').innerHTML =
+      step('Payback no papel', `${brl(cac)} ÷ ${brl(margMes)}`, meses(pbSimples)) +
+      step('Payback na prática', `mês em que a margem acumulada, com saída de 1/${n0(tempo)} por mês, cobre ${brl(cac)}`, isFinite(pbAj) ? 'mês ' + pbAj : 'não empata') +
+      step('LTV (valor do cliente)', `${brl(margMes)} × ${n0(tempo)} meses`, brl(ltv)) +
+      step('Tempo mínimo para o retorno', `${brl(cac)} × ${n1(ratio)} ÷ ${brl(margMes)}`, meses(tempoNec));
+  }
+  render();
+})();
+</script>
+
+</body></html>
