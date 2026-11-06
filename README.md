@@ -2,7 +2,7 @@
 
 **Quanto investir para conquistar novos clientes, a partir da meta de crescimento da empresa.**
 
-👉 [Acesse a calculadora](https://github.com/juliaatroch-pixel/calculadora-aquisicao.git)
+👉 [Acesse a calculadora](https://juliaatroch-pixel.github.io/calculadora-aquisicao/)
 
 ## O que ela responde
 
